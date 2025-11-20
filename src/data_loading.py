@@ -13,16 +13,11 @@ location = os.path.join(input_dir,"labels_as_txt","labels")
 
 def format_data(input_dir, target_dir, location):
     print("Collecting data...")
-    labels = []
-    for label in os.listdir(location):
-        label_path = os.path.join(location,label)
-        labels.append(label_path)
 
-    images = []
-    for img in os.listdir(os.path.join(input_dir,"images")):
-        img_path = os.path.join(input_dir,"images",img)
-        images.append(img_path)
-
+    #Die zueinander gehörigen Labels und Images müssen in val und train landen
+    labels = sorted(os.listdir(location))   
+    images = sorted(os.listdir(os.path.join(input_dir,"images")))
+ 
     data = list(zip(images,labels))
 
     #random.shuffle(data)
@@ -42,25 +37,35 @@ def format_data(input_dir, target_dir, location):
             
             
             data_list = []
+            
             match(type,split):
-                case("images","train"): data_list = train_images
-                case("images","val"): data_list = val_images
-                case("labels","train"): data_list = train_labels
-                case("labels","val"): data_list = val_labels
+                case("images","train"): 
+                    data_list = train_images
+                    current_location = os.path.join(input_dir,"images")
+                case("images","val"): 
+                    data_list = val_images
+                    current_location = os.path.join(input_dir,"images")
+                case("labels","train"): 
+                    data_list = train_labels
+                    current_location = location
+                case("labels","val"): 
+                    data_list = val_labels
+                    current_location = location
 
             for each in data_list:
-                shutil.copy(each,destination)
+                shutil.copy(os.path.join(current_location,each),destination)
 
 
 def create_yaml_and_txt_files(input_dir,target_dir):
 
-    os.makedirs(target_dir,exist_ok=True)
+    os.makedirs(target_dir, exist_ok=True)  #Erstellt den Zielordner
+    os.makedirs(location, exist_ok = True)  #Erstellt einen Zwischenordner in den die Umgewandelten labels abgelegt werden
 
     print("Creating yaml...")
     yaml_path = os.path.join(target_dir, "yolov8_formated_data.yaml")
 
-    with open(yaml_path, "w", encoding="utf-8") as file:
-        file.write(
+    with open(yaml_path, "w", encoding="utf-8") as yaml_file:
+        yaml_file.write(
             f"path: {target_dir}\n"
             f"train: {os.path.join('images', 'train')}\n"
             f"val: {os.path.join('images', 'val')}\n"
@@ -75,19 +80,19 @@ def create_yaml_and_txt_files(input_dir,target_dir):
             root = tree.getroot()
 
             if int(label[:-4]) % 100 == 5:
-                print("Fortschritt:",int(label[:-4])/2000 * 100)
+                print("Fortschritt:",int(label[:-4])/1999 * 100) #Funktioniert nicht richtig, da OS die Dateien nicht sortiert durchläuft
                 
-            ##converting xml to txt
-            with open(os.path.join(location,'labels', label.replace(".xml", ".txt")), "w", encoding="utf-8") as txt_file:
+            #Erstellt eine .txt File mit Namen des aktuellen Labels im Zwischenodner 
+            with open(os.path.join(location, label.replace(".xml", ".txt")), "w", encoding="utf-8") as txt_file:
                
-                # Beispiel: nach allen <name>-Einträgen suchen
+                # Der Inhalt der xml Strucktur wird ausgelesen und im Label Format für yolov8 in die txt-Datei geschrieben
                 for object in root.findall('object'):
                     name = object.find('name').text
                     color = object.find('color').text
                     class_name = name #f"{name}_{color}"
                     if(not class_name in class_dictionary):
                         class_dictionary.append(name)
-                        file.write(f"  {class_counter}: {name}\n")
+                        yaml_file.write(f"  {class_counter}: {name}\n")     #Gibt jeder Klasse einen Identifier und notiert diesen in der yaml
                         class_id = class_counter
                         class_counter +=1
                     else:
@@ -100,7 +105,7 @@ def create_yaml_and_txt_files(input_dir,target_dir):
                     xmax = float(bndbox.find("xmax").text)
                     ymax = float(bndbox.find("ymax").text)
 
-                    #Umrechnung in YOLO-Format
+                    #Umrechnung in YOLO-Format (Aus Pixelpositionen werden relative Werte zwischen 0 und 1)
                     img_width, img_height = 2048, 2048
                     x_center = ((xmin + xmax) / 2) / img_width
                     y_center = ((ymin + ymax) / 2) / img_height
@@ -110,9 +115,10 @@ def create_yaml_and_txt_files(input_dir,target_dir):
                     txt_file.write(f"{class_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
                    
 
-        print("All Done, bye bye...")
+        print("Yaml and Labels were successfully created!")
 
 #os.makedirs(os.path.join(location,'labels'),exist_ok=True)
 
-#create_yaml_and_txt_files(input_dir=input_dir,target_dir=target_dir)
+
+create_yaml_and_txt_files(input_dir=input_dir,target_dir=target_dir)
 format_data(input_dir,target_dir,location)

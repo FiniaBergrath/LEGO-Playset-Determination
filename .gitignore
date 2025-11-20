@@ -7,6 +7,8 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+yolov8m.pt
+runs/
 data/
 .Python
 build/
