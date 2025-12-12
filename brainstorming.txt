@@ -1,0 +1,31 @@
+1. BoundingBoxen finden
+2. Hintergrund ermitteln 
+	-> über mehrere Bounding Boxen hinweg einen gemeinsamen Farbwert ermitteln?
+	-> über das gesamte Bild eine Farbe die am häufigsten vorkommt ermitteln
+	
+3. Bausteinfarbe ermitteln:
+	->Baustein liegt in der Mitte, daher geben die Pixel in der Mitte des Bildes am meisten aussage
+		- es könnte aber sein, das der Stein Löcher hat und somit fälschlich als Schwarz -> Schatten erkannt wird
+	->Baustein nimmt die größte Fläche im Bild ein, wenn Rechteckig 
+		- falls diagonal oder mit einem anderen Stein überschneidend muss das als Bedingung nicht gegeben sein
+	->Bausteintyp berücksichtigen?
+		- Rechtecke können leichter klassifiziert werden, weil die Boundingbox gut liegt
+	->Legosteine haben die Eigenschaft, dass die Farbfläche oft nur geringe Abweichungen hat
+	->In die Bbox ragende Bausteine sind am Bildrand abgeschnitten und haben daher meistens nur eine Kante (Hier kann es auch wieder 		ausnahmen geben - vertikale und horizontale Abtastung zu kombinieren wäre daher eine Überlegung)
+
+	Ansatz C: Hat der Untergrund eine einheitliche Farbe lässt sich diese gut ermitteln und ausblenden
+ 		  Ist er stark gemustert werden mehrere Farbwerte ungefähr gleichhäufig vorkommen, dann können Legosteine gut daran erkannt 		  werden, dass in einem Bereich wenig Farbunterschiede aufzufinden sind
+
+
+Wenn keine oder eine Kanten gefunden wurden: Farbe => Durchschnitt über alle Farben
+Wenn genau zwei Kanten: Farbe => Durchschnitt der Farben innerhalb der Kanten
+Bei 3 Kanten: Welche zwei Kanten liegen näher an der Mitte? =>
+Bei 4 Kanten: Farbwert zwischen Kante 1,2 und 2,3 nehmen
+
+
+-> Algorithmus je nach Bausteintyp der Kategorisiert wurde anpassen:
+	- Baustein Details abfragen über API (Benötigt Baustein Nummer)
+
+Sets suchen - statt Sets in der Anwendung zu suchen, können sie im User gespeichert und über die API abgefragt werden
+	+ Die Set ID ist direkt vorhanden und man kann die Details im Anschluss per API abfragen
+	

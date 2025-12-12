@@ -5,7 +5,7 @@ import random
 import shutil
 import xml.etree.ElementTree as ET
 
-input_dir = "LEGO-ObjectDetection/data/b100-lego-detection-dataset"
+input_dir = "data/b100-lego-detection-dataset"
 target_dir = os.path.join(input_dir,"yolov8_formated_data")
 
 location = os.path.join(input_dir,"labels_as_txt","labels")
