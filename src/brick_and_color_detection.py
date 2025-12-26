@@ -248,6 +248,15 @@ def main():
         detect_edges(x_start,y_start,x_end,y_end,img)
         detect_brick_color(x_start,y_start,x_end,y_end,img)
 
+def determine_bricks():
+    #Prediction des Yolomodels
+
+    #Farbbestimmung der erkannten Steine
+
+    #return Liste der erkannten Steine mit Farbe und Anzahl
+    return ["3004","red",5],["3001","blue",3]
+    pass
+
 
 if __name__ == "__main__":
     main()

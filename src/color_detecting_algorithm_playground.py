@@ -4,24 +4,154 @@ from PIL import Image
 from skimage import color
 
 #img_path = r"runs\detect\predict\1.png"
-img_path = r"runs\detect\predict\algorithm_test.jpg"
+img_path = r"runs\detect\predict\algorithm_test_1.png"
 pixels = Image.open(img_path).convert('RGB')
 
-#Wir tun so als wäre das img hier unsere Boundingbox, daher sind die Koordinaten aktuell die Bildmaße
+
 bbox_px = np.asarray(pixels) / 255
 
-bbox_lab = color.rgb2lab(bbox_px)
-
-# Optional: leichte Rundung, um ähnliche Farben zusammenzufassen
-
 # LAB → RGB für Plot
-
-
 bbox_lab = color.rgb2lab(bbox_px)
+
+#Wir tun so als wäre das img hier unsere Boundingbox, daher sind die Koordinaten aktuell die Bildmaße
 x_start = 0
 y_start = 0
-x_end = 95
-y_end = 49
+x_end = 100#95
+y_end = 100#49
+
+#Ermittelt welche Bausteinfarbe in der Wahrnehmung des Menschen am ähnlichsten zur erkannten Farbe ist
+def detect_color(average_color):
+    
+    average_color = average_color / 255
+    average_color = color.rgb2lab(average_color)
+    detected_color = np.asanyarray(average_color)
+
+    #Aktuell noch allgeimeine Farben - Hier sollen in der Anwendung die Legosteinfarben mit FarbID verwendet werden
+    colors_rgb = np.array([
+        [255,   0,   0],   # Rot
+        [  0, 255,   0],   # Grün
+        [  0,   0, 255],   # Blau
+        [255, 255,   0],   # Gelb
+        [255, 165,   0],   # Orange
+        [128,   0, 128],   # Lila
+        [255, 192, 203],   # Pink
+    ])
+    colors_rgb = colors_rgb / 255
+    colors_lab = color.rgb2lab(colors_rgb)
+    potential_colors = np.asarray(colors_lab)
+
+    color_names = np.array(["rot","grün","blau","gelb","orange","lila","pink"])
+
+    differences = color.deltaE_ciede2000(potential_colors, detected_color)
+    print("differences:" ,differences)
+
+    smallest_difference = np.argmin(differences) 
+
+    print(f"Erkannte Farbe: {color_names[smallest_difference]} : {colors_rgb[smallest_difference]}")
+
+def versuch_no7(x_start,y_start,x_end,y_end,img):
+    pixels = img.quantize(8)
+
+    color_list = pixels.getcolors(10)
+    print(color_list)
+    color_palette = pixels.getpalette()
+    print(color_palette)
+    #pixels.show()
+
+    brick_pixels = np.asarray(pixels) 
+    print(brick_pixels)
+
+    #Eintscheidungsfindung
+
+    #1. Annahme - Farben an Ecken und Kanten sind unwahrscheinlich die Steinfarbe
+    pixel_access = pixels.load()
+    corners = [(x_start,y_start), (x_end-1,y_start), (x_start,y_end-1), (x_end-1,y_end-1)]
+    x_rad = 1
+    y_rad = 1
+
+    #Bestimmung der Farbwerte in den Eckpunkten (5x5 px)
+    '''for x,y in corners:
+        y_rad = -1 if y > 0 else 1
+        for radius in range(0,5):
+            print("x,y:", x,y)
+            print("x_rad, y_rad:", x_rad,y_rad)
+            corner_color = (pixel_access[x+radius*x_rad,y+radius*y_rad])
+            print(corner_color)
+            brick_pixels = np.where(brick_pixels == corner_color, -1, brick_pixels) # '-1' bzw. '255' signalisiert die Farbe bzw. Pixel als ausgeschlossen (hier int8)
+        x_rad = x_rad * -1'''
+
+    #Bestimmung der Farbwerte entlang der BBox Kanten
+    for x in range(x_start,x_end-1):
+        for y in [y_start,y_end-1]:
+            edge_color = (pixel_access[x,y])
+            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
+    
+    for y in range(y_start,y_end-1):
+        for x in [x_start,x_end-1]:
+            edge_color = (pixel_access[x,y])
+            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
+    
+    print(brick_pixels)
+    
+    #Umwandlung
+    '''pil_image = Image.fromarray(brick_pixels)
+    pil_image.putpalette(color_palette)
+    pil_image.show()'''
+
+    #Umschreibung der color palette in Tupel aus rgb
+    rgb_colors = []
+    for i in range(0,7):
+       
+        r = i*3-1
+        g = r+1
+        b = r+2
+
+        red = color_palette[r]
+        green = color_palette[g]     
+        blue = color_palette[b]   
+
+        rgb_colors.append((red,green,blue))
+    
+    #2. Annahme - Der Stein nimmt bei einer gutliegenden Bbox zum großteil die Mitte der Box ein
+    '''width = x_end - x_start
+    height = y_end - y_start
+
+    x_mid = int(width/2)
+    y_mid = int(height/2)
+    x_range = int(0.2 * width)
+    y_range = int(0.2 * height)
+
+    image_middle = brick_pixels[(y_mid-y_range):(y_mid+y_range), (x_mid-x_range):(x_mid+x_range)]
+
+    #Umwandlung
+    pil_image = Image.fromarray(image_middle)
+    pil_image.putpalette(color_palette)
+    colors = pil_image.getcolors()
+    print(max(colors))
+    pil_image.show()'''
+
+    #NP-Array mit Pixeln die Wahrscheinlich die Steinfarbe enthalten
+    resulting_brick_array = np.where(brick_pixels == 255, 0, 1)
+    empty_array = np.where(brick_pixels == 0)
+
+    #Tatsächliches Array (Numpy)
+    image_array = np.asarray(img)
+    image_array = image_array * resulting_brick_array[:,:,None]
+    is_empty_arr = np.any(image_array != 0, axis = 2)
+    print("empty:", is_empty_arr)
+    image_array = image_array[is_empty_arr == True]
+    #plt.imshow(image_array)
+    #plt.show()
+
+    #Mittelwert über die Farbwerte bilden
+    resulting_color = np.sum(image_array[None,:], axis = 1) / len(image_array) 
+    print("image_array",image_array)
+    print(np.sum(image_array[None,:], axis = 1))
+    print(resulting_color)
+    detect_color(resulting_color)
+    
+
+
 
 def detect_objects(x_start,y_start,x_end,y_end,bbox_lab):
     threshold = 0.01
@@ -299,5 +429,7 @@ def versuch_no5(x_start,y_start,x_end,y_end,color_differences):
 #versuch_no5(x_start,y_start,x_end,y_end,bbox_lab)
 
 #detect_faces(x_start,y_start,x_end,y_end,bbox_px)
-detect_edges(x_start,y_start,x_end,y_end,bbox_lab)
+#detect_edges(x_start,y_start,x_end,y_end,bbox_lab)
 #detect_objects(x_start,y_start,x_end,y_end,bbox_lab)
+
+versuch_no7(x_start,y_start,x_end,y_end,pixels)
