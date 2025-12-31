@@ -26,6 +26,7 @@ class Capture:
         self.label.config(text="Kamera pausiert")
                    
     def start_camera(self):
+        self.results = None
         self.stopping_condition = False
         self.update_frame()
 
@@ -58,8 +59,6 @@ class Capture:
             print("waiting for 'q' key press to exit")
             return
 
-        
-            
         results = self.model.predict(frame, verbose=False)
         frame = self.draw_boxes(frame, results)
         

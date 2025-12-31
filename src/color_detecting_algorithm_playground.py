@@ -56,50 +56,15 @@ def versuch_no7(x_start,y_start,x_end,y_end,img):
     print(color_list)
     color_palette = pixels.getpalette()
     print(color_palette)
-    #pixels.show()
+    pixels.show()
 
     brick_pixels = np.asarray(pixels) 
     print(brick_pixels)
 
-    #Eintscheidungsfindung
-
-    #1. Annahme - Farben an Ecken und Kanten sind unwahrscheinlich die Steinfarbe
-    pixel_access = pixels.load()
-    corners = [(x_start,y_start), (x_end-1,y_start), (x_start,y_end-1), (x_end-1,y_end-1)]
-    x_rad = 1
-    y_rad = 1
-
-    #Bestimmung der Farbwerte in den Eckpunkten (5x5 px)
-    '''for x,y in corners:
-        y_rad = -1 if y > 0 else 1
-        for radius in range(0,5):
-            print("x,y:", x,y)
-            print("x_rad, y_rad:", x_rad,y_rad)
-            corner_color = (pixel_access[x+radius*x_rad,y+radius*y_rad])
-            print(corner_color)
-            brick_pixels = np.where(brick_pixels == corner_color, -1, brick_pixels) # '-1' bzw. '255' signalisiert die Farbe bzw. Pixel als ausgeschlossen (hier int8)
-        x_rad = x_rad * -1'''
-
-    #Bestimmung der Farbwerte entlang der BBox Kanten
-    for x in range(x_start,x_end-1):
-        for y in [y_start,y_end-1]:
-            edge_color = (pixel_access[x,y])
-            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
+    #Prüfen wie signifikant die Farbunterschiede der Quantisierten Farben sind:
     
-    for y in range(y_start,y_end-1):
-        for x in [x_start,x_end-1]:
-            edge_color = (pixel_access[x,y])
-            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
-    
-    print(brick_pixels)
-    
-    #Umwandlung
-    '''pil_image = Image.fromarray(brick_pixels)
-    pil_image.putpalette(color_palette)
-    pil_image.show()'''
-
-    #Umschreibung der color palette in Tupel aus rgb
-    rgb_colors = []
+    # 1) Umschreibung der color palette in Tupel aus rgb
+    colors = []
     for i in range(0,7):
        
         r = i*3-1
@@ -110,10 +75,35 @@ def versuch_no7(x_start,y_start,x_end,y_end,img):
         green = color_palette[g]     
         blue = color_palette[b]   
 
-        rgb_colors.append((red,green,blue))
+        colors.append((red,green,blue))
     
-    #2. Annahme - Der Stein nimmt bei einer gutliegenden Bbox zum großteil die Mitte der Box ein
-    '''width = x_end - x_start
+    # 2) Umwandlung in LAB-Farbraum
+    rgb_colors = np.asarray(colors)
+    rgb_colors = rgb_colors / 255
+    lab_colors = color.rgb2lab(rgb_colors)
+    print(lab_colors)
+
+    # 3) Farben die sich ähneln zu einer Zusammenfassen
+    for color_idx in range(0,len(lab_colors)):
+       
+        for idx in range(color_idx,len(lab_colors)):
+            if color_idx != idx:
+                color_difference = color.deltaE_ciede2000(lab_colors[color_idx], lab_colors[idx])
+                print(color_difference)
+                if color_difference < 15:
+                    brick_pixels = np.where(brick_pixels == idx, color_idx, brick_pixels)
+
+    #Prüfen wie viele Farben nach zusammenschluss noch vorhanden sind:
+    quantized_img = Image.fromarray(brick_pixels)
+    quantized_img.putpalette(color_palette)
+    print(quantized_img.getcolors(10))
+    quantized_img.show()
+
+
+    #Eintscheidungsfindung
+
+    #1. Annahme - Der Stein nimmt bei einer gutliegenden Bbox zum großteil die Mitte der Box ein
+    width = x_end - x_start
     height = y_end - y_start
 
     x_mid = int(width/2)
@@ -126,9 +116,50 @@ def versuch_no7(x_start,y_start,x_end,y_end,img):
     #Umwandlung
     pil_image = Image.fromarray(image_middle)
     pil_image.putpalette(color_palette)
-    colors = pil_image.getcolors()
-    print(max(colors))
+    colors_in_middle = pil_image.getcolors()
+    print(max(colors_in_middle))
+    pil_image.show()
+
+    #2. Annahme - Farben an Ecken und Kanten sind unwahrscheinlich die Steinfarbe
+    pixel_access = pixels.load()
+    corners = [(x_start,y_start), (x_end-1,y_start), (x_start,y_end-1), (x_end-1,y_end-1)]
+    x_rad = 1
+    y_rad = 1
+
+    #Bestimmung der Farbwerte in den Eckpunkten (5x5 px)
+    for x,y in corners:
+        y_rad = -1 if y > 0 else 1
+        for radius in range(0,5):
+            print("x,y:", x,y)
+            print("x_rad, y_rad:", x_rad,y_rad)
+            corner_color = (pixel_access[x+radius*x_rad,y+radius*y_rad])
+            print(corner_color)
+            if corner_color not in colors_in_middle:
+                brick_pixels = np.where(brick_pixels == corner_color, -1, brick_pixels) # '-1' bzw. '255' signalisiert die Farbe bzw. Pixel als ausgeschlossen (hier int8)
+        x_rad = x_rad * -1
+
+    #Bestimmung der Farbwerte entlang der BBox Kanten
+    '''for x in range(x_start,x_end-1):
+        for y in [y_start,y_end-1]:
+            edge_color = (pixel_access[x,y])
+            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
+    
+    for y in range(y_start,y_end-1):
+        for x in [x_start,x_end-1]:
+            edge_color = (pixel_access[x,y])
+            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)'''
+    
+    print(brick_pixels)
+    
+    #3. Annahme - Die Lage der Legosteine innerhalb eines Bildes lässt sich mit Zielregionen abbilden
+
+    #Umwandlung
+    '''pil_image = Image.fromarray(brick_pixels)
+    pil_image.putpalette(color_palette)
     pil_image.show()'''
+
+    
+    
 
     #NP-Array mit Pixeln die Wahrscheinlich die Steinfarbe enthalten
     resulting_brick_array = np.where(brick_pixels == 255, 0, 1)
