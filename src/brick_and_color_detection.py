@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from skimage import color
+from color_detection_algorithm import color_detector
+
 
 def detect_edges(x_start,y_start,x_end,y_end,pixels):
         
@@ -216,7 +218,8 @@ def detect_brick_color(x_start,y_start,x_end,y_end,pixels):
 def main():
     
     #Lädt  das trainierte Model
-    model = YOLO("./runs/detect/train9/weights/best.pt")
+        #model = YOLO("./runs/detect/train9/weights/best.pt")
+    model = YOLO("./runs/detect/loading_weights/train_16/best.pt")
 
     #Lässt eine Prädiktion für ein Bild oder zur Live-Erkennung treffen
     #source = "0" - Nutzt die Kamera des Laptops; source = "/img.png" - wertet das übergebene Bild aus
@@ -235,18 +238,20 @@ def main():
 
     #print("-------\n")
     
-    print(json_format_data) 
+    #print(json_format_data) 
     
     #Über das Dictonary lassen sich nun einfach die boxen zu jedem Stein auslesen um die Farbe des Bausteins zu bestimmen
-
+    
+    detector = color_detector()
     for object in data:
         box = object["box"]
+        part_id = object["name"]
         x_start = int(box['x1'])
         y_start = int(box['y1'])
         x_end = int(box['x2'])
         y_end = int(box['y2'])
-        detect_edges(x_start,y_start,x_end,y_end,img)
-        detect_brick_color(x_start,y_start,x_end,y_end,img)
+        color_id = detector.detect_color(x_start=x_start,y_start=y_start,x_end=x_end,y_end=y_end,img=img,part_id=part_id)
+        #input("Press Enter to continue...")
 
 def determine_bricks():
     #Prediction des Yolomodels

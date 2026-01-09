@@ -3,7 +3,8 @@ import numpy as np
 from PIL import Image
 from skimage import color
 
-#img_path = r"runs\detect\predict\1.png"
+
+'''img_path = r"runs\detect\predict\1.png"
 img_path = r"runs\detect\predict\algorithm_test_1.png"
 pixels = Image.open(img_path).convert('RGB')
 
@@ -17,7 +18,43 @@ bbox_lab = color.rgb2lab(bbox_px)
 x_start = 0
 y_start = 0
 x_end = 100#95
-y_end = 100#49
+y_end = 100#49'''
+
+
+import tkinter as tk
+from PIL import Image, ImageTk
+
+#Visualisierung
+def show_images(original, quantized, super_quantized, result):
+    root = tk.Tk()
+    root.title("Bildvergleich")
+
+    images = [
+        ("Original", original),
+        ("Quantisiert", quantized),
+        ("Super-quantisiert", super_quantized),
+        ("Ergebnis", result)
+    ]
+
+    tk_images = []  # Referenzen halten (wichtig!)
+
+    for idx, (label_text, pil_img) in enumerate(images):
+        row = (idx // 2) * 2
+        col = idx % 2
+
+        pil_img = pil_img.resize((300, 300))
+
+        tk_img = ImageTk.PhotoImage(pil_img)
+        tk_images.append(tk_img)
+
+        label = tk.Label(root, text=label_text, font=("Arial", 12, "bold"))
+        label.grid(row=row, column=col, pady=(10, 0))
+
+        img_label = tk.Label(root, image=tk_img)
+        img_label.grid(row=row + 1, column=col, padx=10, pady=10)
+
+    root.mainloop()
+
 
 #Ermittelt welche Bausteinfarbe in der Wahrnehmung des Menschen am ähnlichsten zur erkannten Farbe ist
 def detect_color(average_color):
@@ -48,24 +85,36 @@ def detect_color(average_color):
     smallest_difference = np.argmin(differences) 
 
     print(f"Erkannte Farbe: {color_names[smallest_difference]} : {colors_rgb[smallest_difference]}")
+    #return color_id
 
 def versuch_no7(x_start,y_start,x_end,y_end,img):
-    pixels = img.quantize(8)
+    #Beschränkung des Bildes auf Bbox Größe
+    bbox_px = np.asarray(img)
+    bbox_px = bbox_px[y_start:y_end, x_start:x_end]
+    width = x_end - x_start
+    height = y_end - y_start
 
-    color_list = pixels.getcolors(10)
-    print(color_list)
-    color_palette = pixels.getpalette()
-    print(color_palette)
-    pixels.show()
-
-    brick_pixels = np.asarray(pixels) 
-    print(brick_pixels)
-
-    #Prüfen wie signifikant die Farbunterschiede der Quantisierten Farben sind:
+    #Umwandlung
+    bbox_image = Image.fromarray(bbox_px)
+    #bbox_image.show()
+    original = bbox_image
     
+    #Farbquantisierung
+    number_of_colors = 15
+    pixels = bbox_image.quantize(number_of_colors)
+    # => Wichtig zum nachvollziehen: Ab diesem Punkt sind die Farben mit 0 bis number_of_colors nummeriert - ihr rgb-Wert ist in color_palette gespeichert!
+    color_list = pixels.getcolors(number_of_colors)
+    color_palette = pixels.getpalette()
+    #pixels.show()
+    quantized = pixels
+
+    brick_pixels = np.asarray(pixels)
+
+    #Prüfen wie signifikant die Farbunterschiede der quantisierten Farben sind:
+
     # 1) Umschreibung der color palette in Tupel aus rgb
     colors = []
-    for i in range(0,7):
+    for i in range(0,number_of_colors):
        
         r = i*3-1
         g = r+1
@@ -90,84 +139,131 @@ def versuch_no7(x_start,y_start,x_end,y_end,img):
             if color_idx != idx:
                 color_difference = color.deltaE_ciede2000(lab_colors[color_idx], lab_colors[idx])
                 print(color_difference)
-                if color_difference < 15:
+                if color_difference < 10:
                     brick_pixels = np.where(brick_pixels == idx, color_idx, brick_pixels)
 
     #Prüfen wie viele Farben nach zusammenschluss noch vorhanden sind:
     quantized_img = Image.fromarray(brick_pixels)
     quantized_img.putpalette(color_palette)
-    print(quantized_img.getcolors(10))
-    quantized_img.show()
+    color_count = quantized_img.getcolors(number_of_colors)
+    #quantized_img.show()
+    super_quantized = quantized_img
+    print("color_counts: ", color_count)
+
+    bbox_size = width * height
+    max_color = max(color_count)
+    count, _ = max_color
+    percentage = count / bbox_size * 100
+    if percentage >= 60:
+        resulting_brick_array = brick_pixels
+    #Wenn maximum 80% des Bildes - dann ist der Stein sehr groß
+
+    else:
+        #Eintscheidungsfindung - Welche Farbe gehört zum Stein?
+
+        #1. Annahme - Der Stein befindet sich in der Mitte der Box
+        x_mid = int(width/2)
+        y_mid = int(height/2)
+        x_range = int(0.2 * width)
+        y_range = int(0.2 * height)
+
+        image_middle = brick_pixels[(y_mid-y_range):(y_mid+y_range), (x_mid-x_range):(x_mid+x_range)]
+
+        #Umwandlung
+        pil_image = Image.fromarray(image_middle)
+        pil_image.putpalette(color_palette)
+        colors_in_middle = pil_image.getcolors()
+        print(max(colors_in_middle))
+        pil_image.show()
 
 
-    #Eintscheidungsfindung
+        #2. Annahme - Farben an Ecken und Kanten sind unwahrscheinlich die Steinfarbe
+        pixel_access = pixels.load()
+        corners = [(0,0), (width-1,0), (0,height-1), (width-1,height-1)]
+        x_rad = 1
+        y_rad = 1
 
-    #1. Annahme - Der Stein nimmt bei einer gutliegenden Bbox zum großteil die Mitte der Box ein
-    width = x_end - x_start
-    height = y_end - y_start
+        #A) Bestimmung der Farbwerte in den Eckpunkten (5x5 px) und ihrer Häufigkeit
+        corner_count = np.ones(number_of_colors)
+        '''for x,y in corners:
+            y_rad = -1 if y > 0 else 1
+            for radius in range(0,5):
+                print("x,y:", x,y)
+                print("x_rad, y_rad:", x_rad,y_rad)
+                corner_color = (pixel_access[x+radius*x_rad,y+radius*y_rad])
+                print(corner_color)
+                corner_count[corner_color] += 1
+            x_rad = x_rad * -1
+    '''
+        # B) Bestimmung der Farbwerte entlang der BBox Kanten
+        
+        for y in [0,height-1]:
+            for x in range(0,width-1):
+                edge_color = brick_pixels[y,x]
+                corner_count[edge_color] += 1
+        
+        for x in [0,width-1]:
+            for y in range(0,height-1):  
+                edge_color = brick_pixels[y,x]
+                corner_count[edge_color] += 1
+        
+        
+        print("Image mitte:", image_middle)
+        for color_idx in range(0,len(corner_count)):
+            #1) Farben die nicht in der Mitte vorkommen werden ausgeschlossen - siehe Annahme 1
+            #2) Hintergrund kommt häufig in Ecken vor - kann aber auch in der Mitte vorkommen
+            
+            percentage_amount = corner_count[color_idx] / sum(corner_count) * 100
+            print("color_idx", color_idx)
+            print("prozentzahl:",percentage_amount)
+            schwellenwert = 100 / number_of_colors
+            print("Schwellenwert:", schwellenwert)
+            if (color_idx not in image_middle) or (percentage_amount > schwellenwert):
+                print("Farbe ausgeschlossen")
+                brick_pixels = np.where(brick_pixels == color_idx, -1, brick_pixels) # '-1' bzw. '255' signalisiert die Farbe bzw. Pixel als ausgeschlossen (hier int8)
+        
 
-    x_mid = int(width/2)
-    y_mid = int(height/2)
-    x_range = int(0.2 * width)
-    y_range = int(0.2 * height)
 
-    image_middle = brick_pixels[(y_mid-y_range):(y_mid+y_range), (x_mid-x_range):(x_mid+x_range)]
+        #Umwandlung um Ergebnis darzustellen:
+        pil_image = Image.fromarray(brick_pixels)
+        pil_image.putpalette(color_palette)
+        #pil_image.show()
+        result = pil_image
+            
+        #3. Annahme - Die Lage der Legosteine innerhalb eines Bildes lässt sich mit Zielregionen abbilden
 
-    #Umwandlung
-    pil_image = Image.fromarray(image_middle)
+        #Umwandlung
+    pil_image = Image.fromarray(brick_pixels)
     pil_image.putpalette(color_palette)
-    colors_in_middle = pil_image.getcolors()
-    print(max(colors_in_middle))
-    pil_image.show()
-
-    #2. Annahme - Farben an Ecken und Kanten sind unwahrscheinlich die Steinfarbe
-    pixel_access = pixels.load()
-    corners = [(x_start,y_start), (x_end-1,y_start), (x_start,y_end-1), (x_end-1,y_end-1)]
-    x_rad = 1
-    y_rad = 1
-
-    #Bestimmung der Farbwerte in den Eckpunkten (5x5 px)
-    for x,y in corners:
-        y_rad = -1 if y > 0 else 1
-        for radius in range(0,5):
-            print("x,y:", x,y)
-            print("x_rad, y_rad:", x_rad,y_rad)
-            corner_color = (pixel_access[x+radius*x_rad,y+radius*y_rad])
-            print(corner_color)
-            if corner_color not in colors_in_middle:
-                brick_pixels = np.where(brick_pixels == corner_color, -1, brick_pixels) # '-1' bzw. '255' signalisiert die Farbe bzw. Pixel als ausgeschlossen (hier int8)
-        x_rad = x_rad * -1
-
-    #Bestimmung der Farbwerte entlang der BBox Kanten
-    '''for x in range(x_start,x_end-1):
-        for y in [y_start,y_end-1]:
-            edge_color = (pixel_access[x,y])
-            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)
+    left_over_colors = color.getcolors(pil_image)
     
-    for y in range(y_start,y_end-1):
-        for x in [x_start,x_end-1]:
-            edge_color = (pixel_access[x,y])
-            brick_pixels = np.where(brick_pixels == edge_color, -1, brick_pixels)'''
+    #Schatten und übrige Farben entfernen - Methode 
+    for color_idx in range(0,len(lab_colors)):
+        significant_color_differances = 0
+        count, color_idx = left_over_colors[color_idx]
+        if(count != 0):
+            for idx in range(color_idx,len(lab_colors)):
+                if color_idx != idx:
+                    color_difference = color.deltaE_ciede2000(lab_colors[color_idx], lab_colors[idx])
+                    print(color_difference)
+                    if color_difference > 6:
+                        significant_color_differances += 1
     
-    print(brick_pixels)
     
-    #3. Annahme - Die Lage der Legosteine innerhalb eines Bildes lässt sich mit Zielregionen abbilden
-
-    #Umwandlung
-    '''pil_image = Image.fromarray(brick_pixels)
-    pil_image.putpalette(color_palette)
-    pil_image.show()'''
 
     
     
 
     #NP-Array mit Pixeln die Wahrscheinlich die Steinfarbe enthalten
     resulting_brick_array = np.where(brick_pixels == 255, 0, 1)
-    empty_array = np.where(brick_pixels == 0)
+    print("Ergebnis", resulting_brick_array)
 
     #Tatsächliches Array (Numpy)
-    image_array = np.asarray(img)
+    image_array = np.asarray(bbox_image)
+    
     image_array = image_array * resulting_brick_array[:,:,None]
+    
+    #Entfernung der leeren Arrayeinträge 
     is_empty_arr = np.any(image_array != 0, axis = 2)
     print("empty:", is_empty_arr)
     image_array = image_array[is_empty_arr == True]
@@ -178,9 +274,10 @@ def versuch_no7(x_start,y_start,x_end,y_end,img):
     resulting_color = np.sum(image_array[None,:], axis = 1) / len(image_array) 
     print("image_array",image_array)
     print(np.sum(image_array[None,:], axis = 1))
-    print(resulting_color)
+
     detect_color(resulting_color)
-    
+    #return detect_color(resulting_color)
+    show_images(original, quantized, super_quantized, result)
 
 
 
@@ -463,4 +560,4 @@ def versuch_no5(x_start,y_start,x_end,y_end,color_differences):
 #detect_edges(x_start,y_start,x_end,y_end,bbox_lab)
 #detect_objects(x_start,y_start,x_end,y_end,bbox_lab)
 
-versuch_no7(x_start,y_start,x_end,y_end,pixels)
+#versuch_no7(x_start,y_start,x_end,y_end,pixels)

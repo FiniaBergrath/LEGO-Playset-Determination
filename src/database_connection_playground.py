@@ -22,8 +22,14 @@ class db_connection():
 
         def get_colors(self):
                 print("Get colors:")
-                response = rebrick.lego.get_colors()
-                print(json.loads(response.read()))
+                colors = self.rb.get_colors()
+                return colors
+        
+        
+        def get_part_colors(self, part_id):
+                print("Get Part colors")
+                colors = self.rb.get_part_colors(part_id)
+                return colors
 
         def search_sets(self,search_name):
                 print("Searching for", search_name)
@@ -40,12 +46,25 @@ class db_connection():
                 print(sets)
                 return sets
 
+        def get_element(self,part_id, color_id, api_key=None):
+
+                parameters = {'key': api_key}
+
+                path = rebrick.config.API_LEGO_URL + "parts/%s/" % part_id + "colors/%s/" % color_id
+
+                result = rebrick.request.request(path, parameters)
+                result = json.loads(result.read())
+                print(result)
+
+                return result
+
+
         def get_element_by_id(self,id):
                 data = self.rb.get_element(id)
                 print(data)
                 print()
 
-        def get_element_image(self, element_id):
+        def get_element_image_by_id(self, element_id):
                 print("Get element image:")
                 data = self.rb.get_element_image(str(element_id))
                 print(data)
@@ -57,7 +76,11 @@ class db_connection():
         def get_element_image(self, element_url):
                 return self.rb.get_file(element_url) #Rückgabe: Bildinhalt in byte?
         
+        def get_element_details(self,element_id):
+                result = self.rb.get_element(element_id)
+                return result
 
+        
         #7891-1
         def get_set(self, set_id):
                 print("Get set:")
@@ -95,27 +118,13 @@ class db_connection():
         
                 return count, bricks, brick_count
         
-        def get_element_details(self,element_id):
-                result = self.rb.get_element(element_id)
-                return result
+       
 
-        def get_element(self,part_id, color_id, api_key=None):
-
-                parameters = {'key': api_key}
-
-                path = rebrick.config.API_LEGO_URL + "parts/%s/" % part_id + "colors/%s/" % color_id
-
-                result = rebrick.request.request(path, parameters)
-                result = json.loads(result.read())
-                print(result)
-
-                return result
-        
 
 db = db_connection()
-
+'''
 #sets = db.search_sets("Star Wars")
-element_ids = db.get_element("3004","15")
+element_ids = db.get_element("11212","87")
 print(element_ids)
 image_url = element_ids['part_img_url']
 for element in element_ids["elements"]:
@@ -124,8 +133,11 @@ for element in element_ids["elements"]:
         color = result.color
         print(discribtion)
         print(color.name)
-
-db.get_element_image(image_url)
+'''
+#db.get_element_image(image_url)
 
 #print(db.get_set_elements("7891-1"))
 #print(db.get_set_elements("0011-3"))
+#print(db.get_colors())
+#print(db.get_color_details(1085))
+#db.get_part_colors(32073)

@@ -12,14 +12,17 @@ class Capture:
     def __init__(self, root):
         print("Initializing camera...")
         print("Loading model...")
-        self.model = YOLO("yolov8n.pt")
+        #self.model = YOLO("yolov8m.pt")
+        self.model = YOLO("./runs/detect/loading_weights/train_16/best.pt")
         self.root = root
         self.label = tk.Label(root)
         self.stopping_condition = False
         print("Starting VideoCapture...")
-        self.cap = cv.VideoCapture(0, cv.CAP_DSHOW)
+        self.cap = cv.VideoCapture(1, cv.CAP_DSHOW)
         root.after(0, self.label.place(relx=0.05, rely=0.03))
+
         self.results = None
+        self.result_frame = None
 
     def pause_camera(self):
         self.stopping_condition = True
@@ -27,6 +30,7 @@ class Capture:
                    
     def start_camera(self):
         self.results = None
+        self.result_frame = None
         self.stopping_condition = False
         self.update_frame()
 
@@ -73,6 +77,7 @@ class Capture:
             
         else:
             self.results = results
+            self.result_frame = img
             
 
             
@@ -85,6 +90,9 @@ class Capture:
                     return self.results
         print("Problem accured: Still no results available...")
         return self.results
+
+    def get_result_frame(self):
+        return self.result_frame
 
     def close_camera(self):
         print("Releasing camera...")

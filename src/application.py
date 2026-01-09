@@ -3,7 +3,7 @@ from tkinter import ttk
 from PIL import ImageTk
 from PIL import Image
 from database_connection_playground import db_connection
-#import brick_and_color_detection as detector
+from color_detection_algorithm import color_detector
 import cross_entropy_determining_set as ce
 import asyncio
 import tk_async_execute as tae 
@@ -11,6 +11,7 @@ from working_and_displaying_camera_input import Capture
 import json
 import random
 import io
+import traceback
 
 
 class Application:
@@ -25,6 +26,7 @@ class Application:
         
         #Fenstereinstellungen
         self.root = tk.Tk()
+        self.root.report_callback_exception = self.tk_exception_handler
         self.root.title("Lego-Object-Detection")
         self.root.geometry("1920x1080")
         self.root.configure(bg=self.color_theme["yellow"])
@@ -32,6 +34,7 @@ class Application:
         #Kamera und Database
         self.capture = None
         self.db = db_connection()
+        self.detector = color_detector(self.db)
 
         #Listen
         self.setlist = []
@@ -46,7 +49,7 @@ class Application:
         self.frame.place(relx=0.5, rely=0.5, relwidth=0.9, relheight=0.9, anchor="center")
         #Set-Display
         self.set_frame = tk.Frame(self.frame, bg=self.color_theme["grey"])
-        self.set_frame.place(relx = 0.05, rely=0.75, relwidth=0.5, relheight = 0.35, anchor = 'w')
+        self.set_frame.place(relx = 0.05, rely=0.8, relwidth=0.5, relheight = 0.25, anchor = 'w')
         #Part-Display
         self.part_frame = tk.Frame(self.frame, bg = self.color_theme["grey"])
         #Eingabe-Feld
@@ -178,67 +181,75 @@ class Application:
 
     #Startet die Ermittlung des Legosets
     async def start_set_detection(self):
-        
-        #Kamera pausieren
-        self.capture.pause_camera()
+        try:
+            #Kamera pausieren
+            self.capture.pause_camera()
 
-        #Detections holen
-        self.detect_parts.clear()
-        detections = await self.capture.get_results()
-        json_format_data = detections[0].to_json()
-        data = json.loads(json_format_data)
-        print(data)
+            #Detections holen
+            self.detect_parts.clear()
+            detections = await self.capture.get_results()
+            img = self.capture.get_result_frame()
+            json_format_data = detections[0].to_json()
+            data = json.loads(json_format_data)
+            print(data)
 
-        #Part_id auslesen und Farben bestimmen
-        print("Determining Color")
-        for object in data:
-            box = object["box"]
-            part_id = object["name"]
-            x_start = int(box['x1'])
-            y_start = int(box['y1'])
-            x_end = int(box['x2'])
-            y_end = int(box['y2'])
-            #detect color 
-            color_id = random.choice([320, 1050, 69, 89, 1, 2, 35, 326, 226, 334, 14 ]) #TODO: Ersätzen 
-            part_id = random.choice(["3004","3001","3023","3003","3005","6141"])
-            part = (part_id, color_id)
-            
-            #Fügt den Stein der Liste erkannter Steine hinzu bzw. erhöht die Anzahl falls schon vorhanden
-            if(part in self.detect_parts):
-                idx = self.detect_parts.index(part)
-                self.part_count[idx] = self.part_count[idx] + 1
-            else:
-                self.detect_parts.append((part_id,color_id))    #TODO: Überlegen ob Verwendung von dict statt Liste sinnvoller? 
-                self.part_count.append(1)
+            #Part_id auslesen und Farben bestimmen
+            print("Determining Color")
+            for object in data:
+                box = object["box"]
+                part_id = object["name"]
+                x_start = int(box['x1'])
+                y_start = int(box['y1'])
+                x_end = int(box['x2'])
+                y_end = int(box['y2'])
+                #detect color 
+                #color_id = random.choice([320, 1050, 69, 89, 1, 2, 35, 326, 226, 334, 14 ]) #TODO: Ersätzen 
+                #part_id = random.choice(["3004","3001","3023","3003","3005","6141"])
+                color = self.detector.detect_color(x_start=x_start,y_start=y_start,x_end=x_end,y_end=y_end,img=img,part_id=part_id)
+                part = (part_id, color)
+                
+                #Fügt den Stein der Liste erkannter Steine hinzu bzw. erhöht die Anzahl falls schon vorhanden
+                if(part in self.detect_parts):
+                    idx = self.detect_parts.index(part)
+                    self.part_count[idx] = self.part_count[idx] + 1
+                else:
+                    self.detect_parts.append(part)    #TODO: Überlegen ob Verwendung von dict statt Liste sinnvoller? 
+                    self.part_count.append(1)
 
-        #Kreuzentropie bestimmen
-        print("Determining the best matching set...")
-        results = ce.determine_matching_of_sets(self.detect_parts, self.part_count, self.setlist, self.db)
+            #Kreuzentropie bestimmen
+            print("Determining the best matching set...")
+            results = ce.determine_matching_of_sets(self.detect_parts, self.part_count, self.setlist, self.db)
+            print("Set ergebnisse:", results)
 
-        #Screen updaten
-        self.display_detected_parts()
-        self.display_results(results)
-        self.return_button.place(relx=0.05, rely=0.05, anchor= 'nw')
-        pass
+
+            #Screen updaten
+            self.display_detected_parts()
+            self.display_results(results)
+            self.return_button.place(relx=0.05, rely=0.05, anchor= 'nw')
+        except Exception as e:
+            print("Fehler",e)
+            traceback.print_exc()
         
     def display_detected_parts(self):
-        self.part_frame.place(relx = 0.95, rely=0.03, relwidth=0.5, relheight = 0.35, anchor = 'ne')
+        self.part_frame.place(relx = 0.95, rely=0.03, relwidth=0.3, relheight = 0.35, anchor = 'ne')
         tk.Label(self.part_frame, text = "Erkannte Steine").place(relx = 0.05, rely = 0.05, anchor='nw')
 
         print('Anzahl erkannter Objekte: ',len(self.detect_parts) )
         if(len(self.detect_parts) != 0):
             index = 0
             for part in self.detect_parts:
-                part_id,color_id = part
-                #element_ids = self.db.get_element(part_id,color_id)
-                element_ids = self.db.get_element("3004","15")
+                part_id,color = part
+                color_id = color.color_id
+                print("part_id:", part_id)
+                print("color_id",color_id)
+                element_ids = self.db.get_element(part_id,color_id)
+                #element_ids = self.db.get_element("3004","15")
                 print(element_ids)
                 image_url = element_ids['part_img_url']
                 for element in element_ids["elements"]:
                     result = self.db.get_element_details(element)
                     if(result != None):
                         discribtion = result.part.name
-                        color = result.color
                 
                 img = self.db.get_element_image(image_url)
                 img = Image.open(io.BytesIO(img))
@@ -252,7 +263,7 @@ class Application:
                 img_label = tk.Label(frame,image = image)
                 img_label.image = image
                 img_label.place(relx=0.01, rely= 0.5, anchor = 'w')
-                tk.Label(frame, text= f"{discribtion}, {color}")    #TODO
+                tk.Label(frame, text= f"{discribtion}, {color.name}")    #TODO
                 tk.Label(frame, text= f"ID: {part_id}")
                 tk.Label(frame, text= "Anzahl:")
                 tk.Label(frame, text= "Confidence:")
@@ -271,6 +282,8 @@ class Application:
 
             set_id, ce = results[i]
             y = 0.2 + i * 0.1
+
+            
 
             tk.Label(self.set_frame, text = "set_id").place(relx = 0.05, rely = y)
             tk.Label(self.set_frame, text = set_id).place(relx = 0.1, rely = y)
@@ -293,6 +306,11 @@ class Application:
 
         #Kamera weiterlaufen lassen
         self.capture.start_camera()
+        
+    
+    def tk_exception_handler(self,exc, val, tb):
+        print("Tkinter Exception:")
+        traceback.print_exception(exc, val, tb)
 
     
 

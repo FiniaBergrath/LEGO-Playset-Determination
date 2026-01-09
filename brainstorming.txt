@@ -28,4 +28,41 @@ Bei 4 Kanten: Farbwert zwischen Kante 1,2 und 2,3 nehmen
 
 Sets suchen - statt Sets in der Anwendung zu suchen, können sie im User gespeichert und über die API abgefragt werden
 	+ Die Set ID ist direkt vorhanden und man kann die Details im Anschluss per API abfragen
-	
+
+Kreuzentropie:
+-Vergleicht die Steine eines Legosets mit der gegebenen Verteilung an Steinen
+
+
+Selbst Quantisieren:
+-> Rekursives Ablaufen des Bildes [3x3]Matrix 
+-> "glatte" Flächen bestimmen
+
+
+Befehlsübersicht (Notizen für mich)
+
+Datenset herunterladen: 
+1)Account bei Kaggle erstellen, API-Key erzeugen lassen und im Root-Verzeichnis unter .kaggle ablegen
+2)'pip install kaggle' - Kaggle installieren
+3)#!/bin/bash
+kaggle datasets download ronanpickell/b100-lego-detection-dataset
+=> Datenset herunterladen
+
+Datenset nach Download entpacken:
+1) cd Lego-ObjectDetection/data
+2) mkdir b100-lego-detection-dataset
+3) python -m zipfile -e b100-lego-detection-dataset.zip ./b100-lego-detection-dataset 
+=> Datenset im Zip-Format ohne zusätzliche Installation von Tools wie 'unzip' per Python entpacken
+
+4) Scriptdatei 'dataloading.py' ausführen um das Datenset ins Trainingsformat des Yolov8 Models zu bringen
+
+Fehler mit Bootstrap - Eine bestimmte OpenGL-Bibliothek ist nicht installiert, die OpenCV zum laden braucht
+
+
+Präsentationsidee für Legoset Auswahl:
+
+1) Möglichkeit vordefinierte Sets auszuwählen mit Haken setzen / zuletzt verwendete Sets automatisch laden
+2) Link der einen zu Rebrickable führt um dort nach seinem Set zu suchen
+
+- Schildchen die Setnamen und ID bei der Präsentation bereitstellen
+
+"Haching" zur Beschleunigung u. vermeidung unnötiger DB-Abfragen
