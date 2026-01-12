@@ -1,8 +1,8 @@
 import rebrick
 import json
-import matplotlib.pyplot as plt
 import numpy as np
-import asyncio
+import io
+from PIL import Image
 
 
 class db_connection():
@@ -70,11 +70,15 @@ class db_connection():
                 print(data)
                 data_arr = np.asarray(data)
                 print(data_arr)
-                #plt.imshow(data_arr)
-                #plt.show()
+                
 
         def get_element_image(self, element_url):
-                return self.rb.get_file(element_url) #Rückgabe: Bildinhalt in byte?
+                img =  self.rb.get_file(element_url) #Rückgabe: Bildinhalt in byte?
+                if img is None:
+                        print("Image could not be found")
+                else:
+                        img = Image.open(io.BytesIO(img))
+                return img
         
         def get_element_details(self,element_id):
                 result = self.rb.get_element(element_id)

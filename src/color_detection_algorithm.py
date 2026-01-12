@@ -14,7 +14,7 @@ class color_detector():
             self.db = db_connection()
         else:
             self.db = db
-        self.colors_rgb, self.lab_colors, self.colors  = self.get_colors(self.db)
+        self.colors_rgb, self.lab_colors, self.colors = self.get_colors(self.db)
         #Einstellungen des Algorithmus
         self.number_of_colors = 20
         self.c_diff_sensitivity = 8
@@ -212,7 +212,7 @@ class color_detector():
         
     #number_of_colors: Anzahl der Farben auf die Quantisiert wird
     #c_diff_sensitivity: Schwellenwert um Farbtöne zu unterscheiden, sollte zwischen 5-10 liegen
-    def detect_color(self,x_start,y_start,x_end,y_end,img,part_id):
+    def detect_color(self,x_start,y_start,x_end,y_end,img,part_id,show = False):
     
         #Beschränkung des Bildes auf Bbox Größe
         bbox_px = np.asarray(img)
@@ -343,5 +343,8 @@ class color_detector():
 
 
         resulting_color = self.determine_color_id(resulting_color, part_id)
-        self.show_images(original, quantized, super_quantized, middle_img ,result, resulting_color.name, img_4_viz)
+        
+        if show:
+            self.show_images(original, quantized, super_quantized, middle_img ,result, resulting_color.name, img_4_viz)
+        
         return resulting_color

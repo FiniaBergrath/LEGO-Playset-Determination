@@ -68,7 +68,9 @@ class Application:
         #Button zum zurückkehren in den Hauptscreen
         self.return_button = tk.Button(self.frame, text = "<- Return to Homescreen", command = self.return_to_homescreen)
         #Assets:
-        self.bin_image = tk.PhotoImage(file="./assets/bin.png").subsample(5,5)
+        self.bin_image = tk.PhotoImage(file="./assets/images/bin.png").subsample(5,5)
+
+        self.image_label = tk.Label(self.root)
 
         #Kamera starten:
         self.root.after(150, lambda: tae.async_execute(self.initialize_camera(), callback = self.start_camera))

@@ -51,7 +51,7 @@ def sorting_key(cross_entropy_result):
 def determine_matching_of_sets(detected_bricks, detected_counts, sets, db):
     
     detected_total = np.sum(detected_counts)
-    cross_entropy_results = []
+    cross_entropy_results = {}
     print("bricks:",detected_bricks)
     print("counts:",detected_counts)
     print("sets",sets)
@@ -63,7 +63,7 @@ def determine_matching_of_sets(detected_bricks, detected_counts, sets, db):
         set_total, set_bricks, set_counts = db.get_set_elements(set_id)
 
         if(set_total == None):
-             cross_entropy_results.append((set_id, None))
+             cross_entropy_results[set_id] = 1000
         
         else:
             set_bricks = np.asarray(set_bricks, dtype=object)
@@ -87,10 +87,10 @@ def determine_matching_of_sets(detected_bricks, detected_counts, sets, db):
             ce = 0.7 * direct_ce + indirect_ce * 0.3
             print("ce", ce)
 
-            cross_entropy_results.append((set_id, ce))
+            cross_entropy_results[set_id] = ce
 
-    return sorted(cross_entropy_results, key=sorting_key) #Sortiert die Liste in aufsteigender Reihenfolge, sodass min -> list[0]
-
+    #return sorted(cross_entropy_results, key=sorting_key) #Sortiert die Liste in aufsteigender Reihenfolge, sodass min -> list[0]
+    return cross_entropy_results
 
 
 
