@@ -79,8 +79,8 @@ def create_yaml_and_txt_files(input_dir,target_dir):
             tree = ET.parse(os.path.join(input_dir,'annotations',label))
             root = tree.getroot()
 
-            if int(label[:-4]) % 100 == 5:
-                print("Fortschritt:",int(label[:-4])/1999 * 100) #Funktioniert nicht richtig, da OS die Dateien nicht sortiert durchläuft
+           # if int(label[:-4]) % 100 == 5:
+           #     print("Fortschritt:",int(label[:-4])/1999 * 100) #Funktioniert nicht richtig, da OS die Dateien nicht nach Namen sortiert durchläuft
                 
             #Erstellt eine .txt File mit Namen des aktuellen Labels im Zwischenodner 
             with open(os.path.join(location, label.replace(".xml", ".txt")), "w", encoding="utf-8") as txt_file:

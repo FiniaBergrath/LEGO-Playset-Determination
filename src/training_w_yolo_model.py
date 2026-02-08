@@ -2,6 +2,16 @@ from ultralytics import YOLO
 from ultralytics.data.converter import convert_coco
 import os
 
+#Extrahiert die Endungen der trainings und validations damit natürlich sortiert wird 
+#['train', 'train1', 'train10', 'train11', 'train2', 'train3', 'train4', 'train5', 'train6', 'train7', 'train8', 'train9', 'val', 'val2', 'val3', 'val4']
+def determine_number(txt):
+    number = txt.lstrip('train val')
+    if(number != ''):
+        return int(number)
+    else:
+        return 0
+    
+
 def main():
     
      #Lädt ein vortrainiertes Model von ultralytics - Zu Beginn "yolov8m.pt" um mit einen vortrainierten Model zu starten
@@ -15,25 +25,37 @@ def main():
     datasetpath = r"data/b100-lego-detection-dataset/yolov8_formated_data/yolov8_formated_data.yaml"
 
     #Holt sich aus dem letzten Training 
-    trainings = os.listdir("runs")
-    if len(trainings) != 0:
-        weights = True
+    if os.path.exists("runs"):
+        trainings = sorted(os.listdir("runs/detect"), key = determine_number)
+        if len(trainings) == 0:
+            weights = True
+        else:
+            print(trainings)
+            i = 1
+            last_training = trainings[len(trainings)-i]
+            while "train" not in last_training:
+                last_training = trainings[len(trainings)-i]
+                i += 1
+                print("path:", last_training)
+            weights = os.path.join("runs/detect",last_training,"weights/best.pt")
+            print("Using pretrained weights:", weights)
+            input("Press Enter to Continue with these weights or interrupt now")
     else:
-        last_training = sorted(trainings)[trainings.count()-1]
-        weights = os.path.join("runs",last_training,"weights/best.pt")
+        weights = True
+    
 
-      #workers: Defininiert die Anzahl an Dataloadern; Hier gleich 0 um eine Überlastung des Bus zu vermeiden?
+    #workers: Defininiert die Anzahl an Dataloadern; Hier gleich 0 um eine Überlastung des Bus zu vermeiden?
     #resume:  Lässt das Model an einem zuvor gespeicherten Checkpoint weitertrainieren
     #batch:   Kann als ganze Zahl, Auslastungsprozentsatz für die GPU oder Automatisch gestellt sein
-    #save_period: Ermöglicht das Speichern von Checkpoints
+    #save: Ermöglicht das Speichern von Checkpoints
+    #save_period: Ermöglicht das Speichern von Checkpoints alle n Epochen 
     #pretrained: Lädt vortrainierte Gewichte zum training - oben hole ich die des letzten trainings bzw. setzte weights = true, dabei werden Gewichte geladen die von Ultralytics stammen
     #fraction: Da das Datenset sehr groß ist, beschränke ich hier die Menge der Bilder die zum Training genommen werden auf 70%
-    model.train(data=datasetpath, epochs = 50, device='CUDA', workers = 1, batch = 6, save_period = True, pretrained = weights, fraction=0.6)
-    results = model.val(data=datasetpath, workers = 0)
-    print(results.box.map)  # Print mAP50-95
+    model.train(data=datasetpath, epochs = 100, device='CUDA', workers = 0, batch = -1 ,save = True, save_period = -1, pretrained = weights, scale=1 , mosaic=0.0)
+    #results = model.val(data=datasetpath, workers = 0)
+    #print(results.box.map)  # Print mAP50-95
 
-    #Führt je nach eingabe ein
-    #results = model.predict(source="0", show=True)
 
 if __name__ == "__main__":
     main()
+
