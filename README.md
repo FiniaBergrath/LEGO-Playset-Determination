@@ -7,7 +7,7 @@ Within the Application, users can select mutliple LEGO Sets available on **Rebri
 
 When working with modular construction system such as LEGO, individual parts are often stored together in a single container to save space. As a result, assigning each piece back to its original set becomes a tedious and time-consuming task. This application is designed to simplify this sorting progress.
 
-#Demo
+# Demo
 ![Projektdemo](https://github.com/user-attachments/assets/e2418178-c5fb-41fe-ad67-103b9b9df3ef)
 
 # Try out the Application:
