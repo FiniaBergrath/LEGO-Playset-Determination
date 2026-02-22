@@ -1,17 +1,15 @@
 import customtkinter as ctk
-import tkinter as tk
 import tk_async_execute as tae 
 import asyncio
 import random
 import traceback
 
-import cross_entropy_determining_set as ce
-
 from PIL import Image
 
-from working_and_displaying_camera_input import Capture
-from database_connection_playground import db_connection
-from color_detection_algorithm import color_detector
+from set_determination import BrickSetClassifier
+from capture import Capture
+from application.database_connection import DB_connection
+from color_detection_algorithm import Color_detector
 
 
 class Application(ctk.CTk):
@@ -52,16 +50,18 @@ class Application(ctk.CTk):
         
         #External 
         self.capture = None
-        self.after(150, lambda: tae.async_execute(self.initialize_camera(), callback = self.start_camera))#Instanzen asynchron initalisieren -> Erhöht Startzeit der Anwendung und verringert Ladezeit während der Ausführung
+        self.after(150, lambda: tae.async_execute(self.initialize_camera(), callback = self.start_camera, visible=False))#Instanzen asynchron initalisieren -> Erhöht Startzeit der Anwendung und verringert Ladezeit während der Ausführung
        
-        self.db = None
-        tae.async_execute(self.initialize_db_connection(), wait=False, callback=self.on_db_loaded)
-
         self.detector = None
-        
+        self.brick_set_classifier = None
+
+        self.db = None
+        tae.async_execute(self.initialize_db_connection(), wait=False, callback=self.on_db_loaded, visible=False)
+
         #Logical
         self.detect_parts = {}
 
+        #Event Binding
         self.bind("<<SetSelected>>", self.on_set_selected)
 
         self.display_homescreen(init_display=True)
@@ -91,15 +91,16 @@ class Application(ctk.CTk):
 
     #Initalisiert die Datenbank Verbindung 
     async def initialize_db_connection(self):
-        self.db = db_connection()
+        self.db = DB_connection()
 
     def on_db_loaded(self):
         self.overview_frame.set_db_connection(self.db)
+        self.brick_set_classifier = BrickSetClassifier(self.db)
         tae.async_execute(self.initialize_detector(), wait=False)
 
     #Initalisiert die Datenbank Verbindung 
     async def initialize_detector(self):
-        self.detector = color_detector(self.db)
+        self.detector = Color_detector(self.db)
   
 
     def display_resultscreen(self):
@@ -151,7 +152,7 @@ class Application(ctk.CTk):
             print("Determining the best matching set...")
 
             detect_parts = self.brick_result_frame.get_parts()
-            results = ce.determine_matching_of_sets(list(detect_parts.keys()), list(detect_parts.values()), list(setlist), self.db)
+            results = self.brick_set_classifier.determine_matching_of_sets(list(detect_parts.keys()), list(detect_parts.values()), list(setlist))
             self.after(0,lambda: self.set_result_frame.display(results, list(setlist)))
 
         except Exception as e:
@@ -159,7 +160,6 @@ class Application(ctk.CTk):
             traceback.print_exc()
 
     
-
     #Fängt geworfene Events und reicht die Ausführung weiter an entsprechende Instanz (Overview_frame)
     def on_set_selected(self, event):
         print("Gefangen!", event)
@@ -185,7 +185,6 @@ class OverviewFrame(ctk.CTkFrame):
         text = ctk.CTkLabel(self, text = "Wählen Sie die gewünschten Sets aus:", text_color="#7c7977")
         text.grid(row = 1, column = 0, padx = 40, sticky = "w")
         
-        sets = ["a","b"]
         self.set_frame = Set_frame(self)
         self.set_frame.grid(row = 2, column = 0, padx = (40,40), pady= 10, sticky = "ew")
 
@@ -217,7 +216,7 @@ class OverviewFrame(ctk.CTkFrame):
             
             if self.db is None:
                 print("Still no connection found, initalizing Connection...")
-                self.db = db_connection()
+                self.db = DB_connection()
 
         await asyncio.sleep(0.5)
         if self.search_request_id == request_id:  
@@ -534,6 +533,7 @@ class Set_result_frame(ctk.CTkScrollableFrame):
         for widget in self.winfo_children():
             widget.destroy()
         self.grid_forget()
+
 
 
 if __name__ == "__main__":

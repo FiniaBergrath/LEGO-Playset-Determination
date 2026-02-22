@@ -1,28 +1,34 @@
-import numpy as np
 import cv2 as cv
 import customtkinter as ctk
-from PIL import Image, ImageTk
+from PIL import Image
 from ultralytics import YOLO
 import json
-import tk_async_execute as tae 
 import asyncio
-import tkinter as tk
+import configparser
 
 
 class Capture:
     def __init__(self, root, camera_label):
         print("Initializing camera...")
         print("Loading model...")
-        self.model = YOLO("yolov8m.pt")
-        #self.model = YOLO("./runs/detect/loading_weights/train_16/best.pt")
+        self.load_config()
+
+        self.model = YOLO(self.model_path)
         self.root = root
         self.label = camera_label
         self.stopping_condition = False
+        
         print("Starting VideoCapture...")
-        self.cap = cv.VideoCapture(0, cv.CAP_DSHOW)
+        self.cap = cv.VideoCapture(self.camera_index, cv.CAP_DSHOW)
 
         self.results = None
         self.result_frame = None
+
+    def load_config(self):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        self.camera_index = config.get('Camera', 'camera_index')
+        self.model_path = config.get('Model', 'model_path')
 
     def pause_camera(self):
         self.stopping_condition = True
@@ -33,23 +39,28 @@ class Capture:
         self.stopping_condition = False
         self.update_frame()
 
+    #Zeichnet die erkannten BBoxen, den Klassennamen und die Confidence auf dem aktuellen Frame um die Prädiktion darzustellen
     def draw_boxes(self, frame, results):
         json_format_data = results[0].to_json()
         data = json.loads(json_format_data)
         for object in data:
             box = object["box"]
+            name = object["name"]
+            confidence = object["confidence"]
             x_start = int(box['x1'])
             y_start = int(box['y1'])
             x_end = int(box['x2'])
             y_end = int(box['y2'])
-            cv.rectangle(frame, (x_start, y_start), (x_end, y_end), (0, 255, 0), 2)
+            cv.rectangle(frame, (x_start, y_start), (x_end, y_end), (226, 169, 241), 2)
+            cv.putText(frame, f"{name}: {confidence:.2f}", (x_start, y_start - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (226, 169, 241), 2)
         return frame
 
+    #Aktualisiert die Frames der Kamera und führt die Objekterkennung durch, bis die Stopping Condition erfüllt ist -> Algorithmus wird gestartet
     def update_frame(self):
         try:
             if not self.cap.isOpened():
                 print("Cannot open camera")
-                return # Hier Exception werfen oder ähnliches
+                return 
 
             # Capture frame-by-frame
             ret, frame = self.cap.read()
@@ -97,6 +108,7 @@ class Capture:
         print("Problem accured: Still no results available...")
         return self.results
 
+    #Liefert den angezeigten Frame zurück
     def get_result_frame(self):
         return self.result_frame
 

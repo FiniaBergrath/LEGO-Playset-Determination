@@ -1,29 +1,28 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from skimage import color
 import tkinter as tk
 from PIL import Image, ImageTk
-from database_connection_playground import db_connection
+from database_connection import DB_connection
 
-class color_detector():
+class Color_detector():
     def __init__(self, db=None):
         super().__init__()
 
         if db is None:
-            self.db = db_connection()
+            self.db = DB_connection()
         else:
             self.db = db
         self.colors_rgb, self.lab_colors, self.colors = self.get_colors(self.db)
         #Einstellungen des Algorithmus
-        self.number_of_colors = 20
-        self.c_diff_sensitivity = 8
-
+        self.number_of_colors = 20  #Anzahl der Farben auf die Quantisiert wird
+        self.c_diff_sensitivity = 8 #Schwellenwert um Farbtöne zu unterscheiden, sollte zwischen 5-10 liegen
     
-    def get_colors(self,db):
+    
+    def get_colors(self):
 
         rgb_colors = []
-        all_colors = db.get_colors() #Gibt Farben als rebrick Color-Objekte zurück
+        all_colors = self.db.get_colors() #Gibt Farben als rebrick Color-Objekte zurück
         colors = [] 
         for result in all_colors:
             #hex Farbwerte zu rgb umwandeln für spätere Verwendung
@@ -46,7 +45,7 @@ class color_detector():
 
         return rgb_colors, lab_colors, colors
 
-    #Visualisierung
+    #Visualisierung der einzelnen Schritte des Algorithmus -> color_algorithm_example.py nutzt diese Funktion zur Algorithmusvisualisierung
     def show_images(self, original, quantized, super_quantized, box_middle, result, color_name, img_4_viz):
         root = tk.Tk()
         root.title("Bildvergleich")
@@ -209,9 +208,7 @@ class color_detector():
             
         return edge_count
     
-        
-    #number_of_colors: Anzahl der Farben auf die Quantisiert wird
-    #c_diff_sensitivity: Schwellenwert um Farbtöne zu unterscheiden, sollte zwischen 5-10 liegen
+    #Hauptmethode zur Bestimmung der Farbe eines Bausteins in einer BBox
     def detect_color(self,x_start,y_start,x_end,y_end,img,part_id,show = False):
     
         #Beschränkung des Bildes auf Bbox Größe
@@ -249,7 +246,7 @@ class color_detector():
         #1. Annahme - Der Stein befindet sich zentral in der Bbox also ist die Steinfarbe in der Mitte der Box zu finden
         bbox_middle = self.determine_box_middle(width, height, brick_pixels)
 
-            #Umwandlung zur Darstellung des Zwischenergebnisses
+        #Umwandlung zur Darstellung des Zwischenergebnisses
         middle_img = Image.fromarray(bbox_middle)
         middle_img.putpalette(color_palette)
 
@@ -294,37 +291,12 @@ class color_detector():
         result = Image.fromarray(brick_pixels)
         result.putpalette(color_palette)
 
-        '''
-        #Schatten und übrige Farben entfernen - Methode 
-        for color_idx in range(0,len(lab_colors)):
-            significant_color_differances = 0
-            count, color_idx = left_over_colors[color_idx]
-            if(count != 0):
-                for idx in range(color_idx,len(lab_colors)):
-                    if color_idx != idx:
-                        color_difference = color.deltaE_ciede2000(lab_colors[color_idx], lab_colors[idx])
-                        print(color_difference)
-                        if color_difference > 6:
-                            significant_color_differances += 1
-        '''
-        
         #NP-Array mit Pixeln die Wahrscheinlich die Steinfarbe enthalten
         resulting_brick_array = np.where(brick_pixels == 255, 0, 1)
         #print("Ergebnis", resulting_brick_array)
 
         #Tatsächliches Array (Numpy)
         image_array = np.asarray(bbox_image)
-
-        ''' #Auch methode:
-        if significant_color_differances != 0:
-            for y in range(0,height-1):
-                for x in range(0,width-1):
-                    if resulting_brick_array[y,x] == 1:
-        '''             
-
-
-
-        
         image_array = image_array * resulting_brick_array[:,:,None]
         
         #Entfernung der leeren Arrayeinträge 
@@ -340,7 +312,6 @@ class color_detector():
         #print(resulting_color)
         result_4_visualization = ( resulting_brick_array[:, :, None] * resulting_color).astype(np.uint8)
         img_4_viz = Image.fromarray(result_4_visualization)
-
 
         resulting_color = self.determine_color_id(resulting_color, part_id)
         

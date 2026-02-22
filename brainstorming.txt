@@ -65,4 +65,4 @@ Präsentationsidee für Legoset Auswahl:
 
 - Schildchen die Setnamen und ID bei der Präsentation bereitstellen
 
-"Haching" zur Beschleunigung u. vermeidung unnötiger DB-Abfragen
+"Caching" zur Beschleunigung u. vermeidung unnötiger DB-Abfragen

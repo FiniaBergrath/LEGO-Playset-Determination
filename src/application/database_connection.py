@@ -2,22 +2,29 @@ import rebrick
 import json
 import numpy as np
 import io
+import configparser
 from PIL import Image
 
 
-class db_connection():
+class DB_connection():
 
         def __init__(self):
                 super().__init__()
+                self.read_config()
                 self.rb = self.connect_to_rebrick()
 
+        def read_config(self):
+                config = configparser.ConfigParser()
+                config.read('config.ini')
+                self.api_key = config.get('Database', 'API_KEY')
+                self.db_username = config.get('Database', 'db_username')
+                self.db_password = config.get('Database', 'db_password')
 
         def connect_to_rebrick(self):
-                API_KEY = "efdc569787c300ddb18940ffa2081b2d"
-                rebrick.init(API_KEY)
+                rebrick.init(self.api_key)
 
-                rb = rebrick.Rebrick(API_KEY, silent=True)
-                rb.login("ChilliMilli", "3V$gImjlsjjUDrRj")
+                rb = rebrick.Rebrick(self.api_key, silent=True)
+                rb.login(self.db_username, self.db_password)
                 return rb
 
         def get_colors(self):
@@ -123,25 +130,3 @@ class db_connection():
                 return count, bricks, brick_count
         
        
-
-
-db = db_connection()
-'''
-#sets = db.search_sets("Star Wars")
-element_ids = db.get_element("11212","87")
-print(element_ids)
-image_url = element_ids['part_img_url']
-for element in element_ids["elements"]:
-        result = db.get_element_details(element)
-        discribtion = result.part.name
-        color = result.color
-        print(discribtion)
-        print(color.name)
-'''
-#db.get_element_image(image_url)
-
-#print(db.get_set_elements("7891-1"))
-#print(db.get_set_elements("0011-3"))
-#print(db.get_colors())
-#print(db.get_color_details(1085))
-#db.get_part_colors(32073)
