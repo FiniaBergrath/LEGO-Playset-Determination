@@ -19,7 +19,7 @@ class Capture:
         self.stopping_condition = False
         
         print("Starting VideoCapture...")
-        self.cap = cv.VideoCapture(self.camera_index, cv.CAP_DSHOW)
+        self.cap = cv.VideoCapture(int(self.camera_index), cv.CAP_DSHOW)
 
         self.results = None
         self.result_frame = None
@@ -75,10 +75,10 @@ class Capture:
                 return
 
             results = self.model.predict(frame, verbose=False)
-            frame = self.draw_boxes(frame, results)
+            prediction_frame = self.draw_boxes(frame, results)
             
-            frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-            img = Image.fromarray(frame)
+            prediction_frame = cv.cvtColor(prediction_frame, cv.COLOR_BGR2RGB)
+            img = Image.fromarray(prediction_frame)
             frame_img = ctk.CTkImage(img, size=(640,640))
             self.label.configure(image = frame_img)
             self.label.image = frame_img
@@ -89,7 +89,9 @@ class Capture:
                 
             else:
                 self.results = results
-                self.result_frame = img
+                frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+                frame = Image.fromarray(frame)
+                self.result_frame = frame
 
         except Exception as e:
             print(e)
@@ -101,12 +103,14 @@ class Capture:
             for i in range(3):#Das Result wird erst im letzten Durchlauf nach pausierung gespeichert
                 await asyncio.sleep(0.1)  #-Hier warte ich insgesamt 40ms um sicherzustellen, dass die results da sind
                 if(self.results is not None):
-                    json_format_data = self.results[0].to_json()
-                    data = json.loads(json_format_data)
-                    return data
-                
-        print("Problem accured: Still no results available...")
-        return self.results
+                    break
+            if(self.results is None):#Ist nach dem warten immernoch kein Ergebnis vorhanden liegt ein Fehler vor
+                print("Problem accured: Still no results available...")
+                return self.results
+        json_format_data = self.results[0].to_json()
+        data = json.loads(json_format_data)
+        print("Data:",data)
+        return data
 
     #Liefert den angezeigten Frame zurück
     def get_result_frame(self):

@@ -1,5 +1,7 @@
 __pycache__/
 yolov8m.pt
-runs/
+runs/detect/*
+runs/detect02
+!runs/detect/loading_weights
 data/
 .venv

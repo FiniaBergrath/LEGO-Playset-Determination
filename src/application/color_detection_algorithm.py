@@ -13,7 +13,7 @@ class Color_detector():
             self.db = DB_connection()
         else:
             self.db = db
-        self.colors_rgb, self.lab_colors, self.colors = self.get_colors(self.db)
+        self.colors_rgb, self.lab_colors, self.colors = self.get_colors()
         #Einstellungen des Algorithmus
         self.number_of_colors = 20  #Anzahl der Farben auf die Quantisiert wird
         self.c_diff_sensitivity = 8 #Schwellenwert um Farbtöne zu unterscheiden, sollte zwischen 5-10 liegen

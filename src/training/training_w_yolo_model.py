@@ -25,21 +25,25 @@ def main():
     datasetpath = r"data/b100-lego-detection-dataset/yolov8_formated_data/yolov8_formated_data.yaml"
 
     #Holt sich aus dem letzten Training 
-    if os.path.exists("runs"):
-        trainings = sorted(os.listdir("runs/detect"), key = determine_number)
-        if len(trainings) == 0:
+    if os.path.exists("runs/detect"):
+        path = "runs/detect"
+        trainings = sorted(os.listdir(path), key = determine_number)
+        if len(trainings) == 0: 
             weights = True
         else:
-            print(trainings)
-            i = 1
+            if len(trainings) == 1 and os.path.exists("runs/detect/loading_weights"): #Falls noch keine regulären trainings vorhanden sind, nutze die loading_weights
+                path = "runs/detect/loading_weights"
+                trainings = sorted(os.listdir(path), key = determine_number)
+        print(trainings)
+        i = 1
+        last_training = trainings[len(trainings)-i]
+        while "train" not in last_training:
             last_training = trainings[len(trainings)-i]
-            while "train" not in last_training:
-                last_training = trainings[len(trainings)-i]
-                i += 1
-                print("path:", last_training)
-            weights = os.path.join("runs/detect",last_training,"weights/best.pt")
-            print("Using pretrained weights:", weights)
-            input("Press Enter to Continue with these weights or interrupt now")
+            i += 1
+            print("path:", last_training)
+        weights = os.path.join("runs/detect",last_training,"weights/best.pt")
+        print("Using pretrained weights:", weights)
+        input("Press Enter to Continue with these weights or interrupt now")
     else:
         weights = True
     

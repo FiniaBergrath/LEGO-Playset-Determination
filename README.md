@@ -12,7 +12,6 @@ When working with modular construction system such as LEGO, individual parts are
 2. Create an Rebrickable Account and generate an API Key: https://rebrickable.com/register/
 3. Insert your API Key and account information into the 'config.ini'-File
 4. Run 'application.py' to start the application
-    --> Since I have not uploaded the trained model yet, this will use a pretrainded yolov8 model by ultralytics detecting persons and objects as a bottle etc
 
 # How to replicate training with the b200 Dataset:
 1. After cloning this repository create a 'data' directory

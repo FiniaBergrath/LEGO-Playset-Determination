@@ -8,7 +8,7 @@ from PIL import Image
 
 from set_determination import BrickSetClassifier
 from capture import Capture
-from application.database_connection import DB_connection
+from database_connection import DB_connection
 from color_detection_algorithm import Color_detector
 
 
@@ -32,14 +32,14 @@ class Application(ctk.CTk):
 
         #Assets:
         loading_image = Image.open("./assets/images/lego_set_detection_1.png")
-        self.loading_image = ctk.CTkImage(loading_image, size = (600,430))
+        self.loading_image = ctk.CTkImage(loading_image, size = (500,330))
         
         
         #Instances:
 
         #Homescreen
         self.camera_img = ctk.CTkLabel(self, image = self.loading_image, text = None)
-        self.camera_img.grid(row = 0, column = 0, padx = (self.width*0.2,self.width *0.05), rowspan = 2) #Einmalige Plazierung um Kameraladezeit zu überbrücken
+        self.camera_img.grid(row = 0, column = 0, padx = (self.width*0.1,self.width *0.05), rowspan = 2) #Einmalige Plazierung um Kameraladezeit zu überbrücken
         self.overview_frame = OverviewFrame(self)
         self.start_button = ctk.CTkButton(self, text = " ▶ Ausführung starten ", bg_color="#ffffff"  , command=self.display_resultscreen, height= 45)
 
@@ -77,8 +77,8 @@ class Application(ctk.CTk):
         if not init_display:
             self.capture.start_camera()
 
-        self.overview_frame.grid(row = 0, column = 1, padx = (self.width * 0.05, self.width*0.2), pady = (self.height*0.1,self.height*0.1), sticky = ("ew","ns"), rowspan = 2)
-        self.start_button.grid(row=1, column = 1, padx = (self.width*0.05 + 100, self.width*0.2 + 100), pady = (0, self.height * 0.15), sticky = ("ew","s"))
+        self.overview_frame.grid(row = 0, column = 1, padx = (self.width * 0.05, self.width*0.1), pady = (self.height*0.05,self.height*0.05), sticky = ("ew","ns"), rowspan = 2)
+        self.start_button.grid(row=1, column = 1, padx = (self.width*0.05 + 100, self.width*0.1 + 100), pady = (0, self.height * 0.1), sticky = ("ew","s"))
 
     #Initalisiert die Kamera - Kann Ladezeit beanspruchen, daher asynchron
     async def initialize_camera(self):
@@ -96,7 +96,7 @@ class Application(ctk.CTk):
     def on_db_loaded(self):
         self.overview_frame.set_db_connection(self.db)
         self.brick_set_classifier = BrickSetClassifier(self.db)
-        tae.async_execute(self.initialize_detector(), wait=False)
+        tae.async_execute(self.initialize_detector(), wait=False, visible=False)
 
     #Initalisiert die Datenbank Verbindung 
     async def initialize_detector(self):
@@ -108,11 +108,11 @@ class Application(ctk.CTk):
         self.overview_frame.clear()
         self.start_button.grid_forget()
 
-        self.brick_result_frame.grid(row= 0, column = 1, padx = (self.width*0.05, self.width*0.1),pady = (self.height*0.1,self.height*0.05), sticky = ("ew","ns"))
-        self.set_result_frame.grid(row= 1, column = 1, padx = (self.width*0.05, self.width*0.1),pady = (self.height*0.05,self.height*0.1), sticky = ("ew","ns"))
+        self.brick_result_frame.grid(row= 0, column = 1, padx = (self.width*0.05, self.width*0.1),pady = (self.height*0.05,self.height*0.01), sticky = ("ew","ns"))
+        self.set_result_frame.grid(row= 1, column = 1, padx = (self.width*0.05, self.width*0.1),pady = (self.height*0.01,self.height*0.05), sticky = ("ew","ns"))
         self.return_button.grid(row = 0, column = 0, padx = 50, pady= 50, sticky = "nw")
 
-        tae.async_execute(self.start_set_detection(setlist))
+        tae.async_execute(self.start_set_detection(setlist), visible = False)
 
     async def start_set_detection(self, setlist):
         try: 
@@ -126,7 +126,7 @@ class Application(ctk.CTk):
 
             if detections is None:
                 print("No Parts detected")
-                return #TODO: Meldung Anzeigen!!
+                return 
             
             #Part_id auslesen und Farben bestimmen
             print("Determining Color")
@@ -138,10 +138,7 @@ class Application(ctk.CTk):
                 y_start = int(box['y1'])
                 x_end = int(box['x2'])
                 y_end = int(box['y2'])
-                
-                color_id = random.choice([320, 1050, 69, 89, 1, 2, 35, 326, 226, 334, 14 ]) #TODO: Ersätzen 
-                part_id = random.choice(["3004","3001","3023","3003","3005","6141"])
-                
+                             
 
                 #Farbbestimmung
                 color = self.detector.detect_color(x_start=x_start,y_start=y_start,x_end=x_end,y_end=y_end,img=img,part_id=part_id)
@@ -206,7 +203,7 @@ class OverviewFrame(ctk.CTkFrame):
 
         if search_name != "":
             self.search_request_id += 1
-            tae.async_execute(self.search(search_name, self.search_request_id))
+            tae.async_execute(self.search(search_name, self.search_request_id), visible = False)
 
     #Asynchrone Datenbankabfrage nach passenden Sets zur Suchanfrage
     async def search(self, search_name, request_id):
@@ -379,15 +376,20 @@ class Brick_result_frame(ctk.CTkScrollableFrame):
     def display(self, part, db, confidence, position = None):
 
         if not self.is_new_brick(part):
-            self.update_part_count(self,part)
+            self.update_part_count(part)
         else:
             self.add_brick(part)
         
         print("Displaying part...")
         part_id, color = part
         color_id = color.color_id
-
-        element_ids = db.get_element(part_id,color_id)
+        try:
+            element_ids = db.get_element(part_id,color_id)
+            if element_ids is None:
+                print("Fragement erkannt...")
+        except Exception as e:
+            print("Fragement erkannt...")
+            element_ids = None
         self.master.after(0, lambda : self.update_gui(element_ids, part, db, confidence))
 
  
@@ -405,7 +407,7 @@ class Brick_result_frame(ctk.CTkScrollableFrame):
         element_label = ctk.CTkLabel(frame, text = None)
         element_label.grid(row = 0, column = 0, padx=(3,3), pady=(3,3), rowspan = 3)
         img_url = element_ids['part_img_url']
-        tae.async_execute(self.load_element_image(db, element_label, img_url), wait = False)
+        tae.async_execute(self.load_element_image(db, element_label, img_url), wait = False, visible = False)
         
         discribtion = ""
         for element in element_ids["elements"]:
@@ -466,6 +468,8 @@ class Set_result_frame(ctk.CTkScrollableFrame):
         #Asset laden  
         win_image = Image.open("./assets/images/win.png")
         self.win_image = ctk.CTkImage(win_image, size = (50,50))
+        placeholder_img = Image.open("./assets/images/placeholder.png")
+        self.placeholder = ctk.CTkImage(placeholder_img, size = (40,40))
 
         self.title = ctk.CTkLabel(self, text = "Setbewertung")
         self.title.configure(font=("Roboto", 25))
@@ -518,9 +522,9 @@ class Set_result_frame(ctk.CTkScrollableFrame):
         img = db.get_element_image(image_url)
         if img is None:
             print("Image could not be found")
-            #TODO: Platzhalter Img darstellen
-        else:
-            self.master.after(0,lambda: self.display_part_img(img, element))
+            img = self.placeholder
+        
+        self.master.after(0,lambda: self.display_part_img(img, element))
 
     def display_part_img(self,img, element):
         print("Image gesetzt")
