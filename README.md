@@ -1,5 +1,5 @@
-# LEGO Setdetection
-The _LegoSetDetection_ application provides an algorithm to determine the most likely playset for a given collection of LEGO Bricks.
+# LEGO-Playset-Determination
+The _LegoPlaysetDetermination_ application provides an algorithm to determine the most likely playset for a given collection of LEGO Bricks.
 By using the Yolov8 object detection model developed by Ultralytics, the application is able to detect LEGO parts in realtime from a camera feed.
 The Yolov8 model is trained on the **b200-lego-detection-dataset** by Korra P., which contains annotations for the 200 most common LEGO Parts.
 
